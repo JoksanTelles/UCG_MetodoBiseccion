@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BisectionLab — Método de Bisección</title>
+
+    <!-- Google Material Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
+
+    <!-- Librerías matemáticas, gráficas y editor visual -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@14.8.1/lib/browser/math.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+    <!-- Exportación Excel (.xlsx) y generación de Código QR -->
+    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+
+    <!-- KaTeX para vista previa matemática y desarrollo paso a paso -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js" crossorigin="anonymous"></script>
+
+    <!-- MathLive para editor matemático visual interactivo -->
+    <script defer src="https://cdn.jsdelivr.net/npm/mathlive"></script>
+
+    <!-- Estilos principales -->
+    <link rel="stylesheet" href="src/styles.css">
+</head>
+
+<body>
+
+<!-- ==========================================
+     BARRA SUPERIOR
+     ========================================== -->
+<header class="topbar" id="appTopbar">
+    <div class="topbar-inner">
+        <div class="topbar-left">
+            <div class="topbar-uni-logo">
+                <img src="src/HorizontalLogo_OnLight.png" alt="Universidad Computación del Golfo" class="uni-logo uni-logo-light">
+                <img src="src/HorizontalLogo_OnDark.png" alt="Universidad Computación del Golfo" class="uni-logo uni-logo-dark">
+            </div>
+        </div>
+
+        <div class="topbar-right">
+            <label class="theme-toggle" for="themeToggle" title="Cambiar entre modo claro y oscuro">
+                <input type="checkbox" id="themeToggle" aria-label="Cambiar entre modo claro y modo oscuro">
+                <span class="theme-toggle-track">
+                    <span class="theme-icon theme-icon-sun material-icons-round" aria-hidden="true">light_mode</span>
+                    <span class="theme-icon theme-icon-moon material-icons-round" aria-hidden="true">dark_mode</span>
+                    <span class="theme-toggle-thumb"></span>
+                </span>
+            </label>
+
+            <button type="button" class="btn-topbar-qr" id="btnOpenQrModal" title="Compartir escenario mediante enlace o código QR">
+                <span class="material-icons-round mi-sm" aria-hidden="true">qr_code</span>
+                <span>Compartir QR</span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- ==========================================
+     VISTA ÚNICA: LABORATORIO
+     ========================================== -->
+<main class="workspace-shell" id="view-laboratorio" aria-label="Laboratorio del Método de Bisección">
+
+    <div class="bento-layout">
+
+        <!-- PANEL IZQUIERDO: CONTROL Y CONFIGURACIÓN -->
+        <aside class="card control-panel">
+            <div class="panel-eyebrow">PANEL DE CONTROL</div>
+
+            <!-- EDITOR VISUAL MATHLIVE -->
+            <div class="form-group">
+                <div class="label-row">
+                    <label for="mathField">Función f(x):</label>
+                    <span class="kbd-hint">
+                        <span class="material-icons-round mi-xs" aria-hidden="true">keyboard</span>
+                        Teclado desplegable
+                    </span>
+                </div>
+
+                <div id="panelVisual" class="editor-panel math-input-shell">
+                    <math-field
+                        id="mathField"
+                        class="math-field-input"
+                        smart-fence="true"
+                        smart-superscript="true"
+                    >\frac{g \cdot m}{x}\left(1 - e^{-\frac{x}{m}\cdot t}\right) - v</math-field>
+
+                    <div class="math-info-anchor">
+                        <button
+                            type="button"
+                            id="btnMathInfo"
+                            class="math-info-btn"
+                            aria-label="Información sobre sintaxis y funciones soportadas"
+                            aria-expanded="false"
+                            aria-controls="mathInfoPopover"
+                            title="Sintaxis y funciones soportadas"
+                        >
+                            <span class="material-icons-round" aria-hidden="true">info</span>
+                        </button>
+                        <div id="mathInfoPopover" class="math-info-popover hidden" role="tooltip">
+                            Usa el teclado desplegable o escribe directo (<code>/</code> fracción, <code>^</code> potencia).
+                            Soporta <code>e</code>, <code>pi</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>,
+                            <code>exp</code>, <code>ln</code>, <code>log10</code>, <code>sqrt</code>, <code>abs</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RESPALDO AUTOMÁTICO SI MATHLIVE NO CARGA -->
+                <div id="panelTexto" class="editor-panel hidden">
+                    <input
+                        type="text"
+                        id="funcion"
+                        value="((g * m) / x) * (1 - e^(-(x / m) * t)) - v"
+                        placeholder="Ej. ((g*m)/x)*(1-e^(-(x/m)*t))-v"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                </div>
+
+                <!-- VISTA PREVIA EN VIVO (KaTeX) -->
+                <div class="preview-box" id="previewBox">
+                    <div class="preview-header">
+                        <span class="preview-label">Interpretación actual:</span>
+                        <span class="preview-status" id="previewStatus">Válida</span>
+                    </div>
+                    <div id="katexPreview" class="katex-preview"></div>
+                    <div id="syntaxTip" class="syntax-tip hidden"></div>
+                </div>
+            </div>
+
+            <!-- PARÁMETROS OPCIONALES -->
+            <div class="form-group">
+                <details class="params-details" id="paramsDetails">
+                    <summary>Parámetros opcionales</summary>
+                    <div class="params-content">
+                        <textarea
+                            id="parametros"
+                            rows="2"
+                            placeholder="Ej. g = 9.81, m = 68.1, t = 10, v = 40"
+                            spellcheck="false"
+                        >g = 9.81, m = 68.1, t = 10, v = 40</textarea>
+                        <div class="help-text">
+                            Separa con comas o saltos de línea.
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- EJEMPLOS RÁPIDOS -->
+            <div class="form-group">
+                <label for="presetSelect">Selección rápida:</label>
+                <select id="presetSelect" class="select-input">
+                    <option value="paracaidistaParams" selected>Paracaidista de carga</option>
+                    <option value="polinomio">Polinomio clásico: x³ - x - 2</option>
+                    <option value="trascendental">Trascendental: cos(x) - x</option>
+                    <option value="logaritmica">Logarítmica: ln(x) + x - 2</option>
+                    <option value="asintota">Prueba de asíntota: 1/x - 2</option>
+                </select>
+            </div>
+
+            <!-- LÍMITES Y CRITERIOS DE PARADA -->
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label for="a">Límite inferior (a):</label>
+                    <input type="number" id="a" step="any" value="12">
+                </div>
+                <div class="form-group">
+                    <label for="b">Límite superior (b):</label>
+                    <input type="number" id="b" step="any" value="16">
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label for="tolerancia">Tolerancia εs (%):</label>
+                    <input type="number" id="tolerancia" step="any" value="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="maxIter">Máx. iteraciones:</label>
+                    <input type="number" id="maxIter" value="50" min="1" step="1">
+                </div>
+            </div>
+
+            <!-- BOTÓN PRINCIPAL -->
+            <button type="button" id="btnCalcular" class="btn-primary" onclick="calcularBiseccion()">
+                <span class="material-icons-round mi-sm" aria-hidden="true">play_circle</span>
+                <span>Calcular raíz y graficar</span>
+            </button>
+
+            <div id="errorBox" class="error-msg"></div>
+            <div id="warningBox" class="warning-msg"></div>
+            <div id="resultBox" class="result-box"></div>
+        </aside>
+
+        <!-- COLUMNA DERECHA: VISUALIZADOR GRÁFICO + TABLA DE AUDITORÍA -->
+        <div class="bento-right">
+
+            <!-- PANEL SUPERIOR: VISUALIZADOR GRÁFICO INTERACTIVO -->
+            <div class="card chart-card">
+                <div class="chart-header">
+                    <div class="chart-title-group">
+                        <span class="panel-eyebrow">VISUALIZADOR GRÁFICO</span>
+                        <h3>Gráfica de f(x) y cierre del intervalo [a, b]</h3>
+                    </div>
+
+                    <div class="chart-tools">
+                        <span id="chartNote" class="chart-note hidden"></span>
+                        <div class="zoom-controls" aria-label="Controles de zoom">
+                            <button type="button" class="btn-icon-sm" id="btnZoomIn" title="Acercar" aria-label="Acercar">
+                                <span class="material-icons-round mi-sm" aria-hidden="true">zoom_in</span>
+                            </button>
+                            <button type="button" class="btn-icon-sm" id="btnZoomOut" title="Alejar" aria-label="Alejar">
+                                <span class="material-icons-round mi-sm" aria-hidden="true">zoom_out</span>
+                            </button>
+                            <button type="button" class="btn-icon-sm" id="btnZoomReset" title="Restablecer vista" aria-label="Restablecer vista">
+                                <span class="material-icons-round mi-sm" aria-hidden="true">restart_alt</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-wrapper">
+                    <canvas id="graficaBiseccion"></canvas>
+                </div>
+
+                <!-- REPRODUCTOR MULTIMEDIA DE ITERACIONES -->
+                <div class="player-bar" id="playerBar">
+                    <div class="player-controls">
+                        <button type="button" class="player-btn" id="btnIterFirst" title="Primera iteración" aria-label="Primera iteración">
+                            <span class="material-icons-round mi-sm" aria-hidden="true">first_page</span>
+                        </button>
+                        <button type="button" class="player-btn" id="btnIterPrev" title="Iteración anterior" aria-label="Paso anterior">
+                            <span class="material-icons-round mi-sm" aria-hidden="true">fast_rewind</span>
+                        </button>
+                        <button type="button" class="player-btn player-btn-play" id="btnIterPlay" title="Reproducir / Pausar animación" aria-label="Reproducir o pausar">
+                            <span class="material-icons-round" id="btnIterPlayIcon" aria-hidden="true">play_arrow</span>
+                        </button>
+                        <button type="button" class="player-btn" id="btnIterNext" title="Siguiente iteración" aria-label="Paso siguiente">
+                            <span class="material-icons-round mi-sm" aria-hidden="true">fast_forward</span>
+                        </button>
+                        <button type="button" class="player-btn" id="btnIterLast" title="Última iteración" aria-label="Ir al final">
+                            <span class="material-icons-round mi-sm" aria-hidden="true">last_page</span>
+                        </button>
+                    </div>
+
+                    <div class="player-timeline">
+                        <input type="range" id="iterSlider" min="1" max="1" value="1" aria-label="Selector de iteración">
+                    </div>
+
+                    <div class="player-meta">
+                        <select id="playSpeed" class="speed-select" aria-label="Velocidad de animación" title="Velocidad de reproducción">
+                            <option value="1400">0.5x</option>
+                            <option value="850" selected>1x</option>
+                            <option value="420">2x</option>
+                        </select>
+                        <span class="iter-counter" id="iterCounter">0 / 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL INFERIOR: TABLA DE AUDITORÍA -->
+            <div class="card audit-card">
+                <div class="audit-header">
+                    <div>
+                        <span class="panel-eyebrow">TABLA DE AUDITORÍA</span>
+                        <h3>Iteraciones del método <small class="audit-hint">(clic en una fila para ver el paso a paso)</small></h3>
+                    </div>
+
+                    <div class="audit-actions">
+                        <button type="button" class="btn-outline-sm" id="btnOpenDrawerInline" title="Ver desarrollo algebraico de la iteración activa">
+                            <span class="material-icons-round mi-sm" aria-hidden="true">calculate</span>
+                            <span>Paso a paso</span>
+                        </button>
+                        <button type="button" class="btn-outline-sm" id="btnExportExcel" title="Descargar tabla completa en Excel (.xlsx)">
+                            <span class="material-icons-round mi-sm" aria-hidden="true">download</span>
+                            <span>Excel (.xlsx)</span>
+                        </button>
+                        <button type="button" class="btn-outline-sm btn-outline-accent" id="btnGoReport" title="Abrir vista previa y generar Dictamen PDF">
+                            <span class="material-icons-round mi-sm" aria-hidden="true">picture_as_pdf</span>
+                            <span>Generar reporte</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="tablaResultados">
+                        <thead>
+                            <tr>
+                                <th>i</th>
+                                <th>a</th>
+                                <th>b</th>
+                                <th>Raíz aprox. (xr)</th>
+                                <th>f(a)</th>
+                                <th>f(b)</th>
+                                <th>f(xr)</th>
+                                <th>f(a) · f(xr)</th>
+                                <th>Error rel. (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="9" class="empty-table-msg">
+                                    Ingresa los datos y presiona calcular.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- PESTAÑA LATERAL FLOTANTE PARA ABRIR EL DRAWER DIDÁCTICO -->
+    <button type="button" class="drawer-edge-tab" id="btnDrawerEdgeTab" title="Abrir panel Paso a Paso Didáctico">
+        Paso a Paso Didáctico
+    </button>
+
+</main>
+
+<!-- ==========================================
+     MODAL DE REPORTE TÉCNICO (PDF Y QR)
+     ========================================== -->
+<div class="report-modal-backdrop hidden" id="reportModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+    <div class="report-modal-dialog">
+
+        <div class="report-modal-header">
+            <div class="report-modal-header-left">
+                <div>
+                    <span class="panel-eyebrow">REPORTE TÉCNICO — MÉTODO DE BISECCIÓN</span>
+                    <h2 id="reportModalTitle">Dictamen Técnico y Difusión QR</h2>
+                </div>
+            </div>
+            <div class="report-modal-header-right">
+                <button type="button" class="btn-back-lab" id="btnReportBack">
+                    <span class="material-icons-round mi-sm" aria-hidden="true">arrow_back</span>
+                    <span>Volver atrás</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="report-modal-body">
+            <div class="report-layout">
+
+                <!-- VISTA PREVIA DEL DICTAMEN -->
+                <div class="card report-preview-panel">
+                    <div class="report-preview-bar">
+                        <span class="panel-eyebrow">VISTA PREVIA DEL REPORTE</span>
+                    </div>
+
+                    <div class="report-paper-stage">
+                        <article class="report-sheet" id="reportSheet">
+                            <header class="sheet-header">
+                                <div class="sheet-title-block">
+                                    <span class="sheet-kicker">REPORTE TÉCNICO</span>
+                                    <h2>ANÁLISIS DE CONVERGENCIA — MÉTODO DE BISECCIÓN</h2>
+                                    <p class="sheet-meta-line">
+                                        <strong>Licenciatura:</strong> Ingeniería en Sistemas y Ciencia de Datos
+                                    </p>
+                                    <p class="sheet-meta-line">
+                                        <strong>Periodo:</strong> Septiembre-Diciembre 2026 &nbsp;|&nbsp; 4º cuatrimestre
+                                    </p>
+                                    <p class="sheet-meta-line">
+                                        <strong>Docente:</strong> Mtro. Ángel Eduardo Murillo Reyes
+                                    </p>
+                                    <p class="sheet-meta-line">
+                                        <strong>Alumnos:</strong> Joksan Suriel Télles Rincón, Ginger Yaretzy Martínez Ruíz, Luis Ángel González Rodríguez
+                                    </p>
+                                </div>
+                                <div class="sheet-seal">
+                                    <img src="src/logo.png" alt="Logo Universidad Computación del Golfo" class="sheet-seal-logo">
+                                </div>
+                            </header>
+
+                            <section class="sheet-section">
+                                <h3>1. Planteamiento matemático</h3>
+                                <p id="sheetProblemDesc">
+                                    Se busca aproximar la raíz real de la función continua f(x) dentro del intervalo inicial especificado mediante el algoritmo cerrado de Bisección.
+                                </p>
+                                <div class="sheet-formula-box" id="sheetFormulaKatex"></div>
+                                <div class="sheet-params-line" id="sheetParamsLine"></div>
+                            </section>
+
+                            <section class="sheet-section" id="sheetChartSection">
+                                <h3>2. Gráfica de la función y punto de corte</h3>
+                                <div class="sheet-chart-box">
+                                    <img id="sheetChartImg" alt="Gráfica estática de f(x) y raíz encontrada">
+                                </div>
+                            </section>
+
+                            <section class="sheet-section">
+                                <h3>3. Resumen estadístico de convergencia</h3>
+                                <table class="sheet-summary-table">
+                                    <tbody>
+                                        <tr>
+                                            <th>Intervalo inicial [a, b]</th>
+                                            <td id="sheetSumInterval">—</td>
+                                            <th>Tolerancia (εs)</th>
+                                            <td id="sheetSumTol">—</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Iteraciones realizadas</th>
+                                            <td id="sheetSumIter">—</td>
+                                            <th>Error relativo final</th>
+                                            <td id="sheetSumErr">—</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Raíz aproximada (xr)</th>
+                                            <td><strong id="sheetSumRoot">—</strong></td>
+                                            <th>Evaluación f(xr)</th>
+                                            <td id="sheetSumFxr">—</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Estado del método</th>
+                                            <td colspan="3" id="sheetSumStatus">—</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </section>
+
+                            <section class="sheet-section" id="sheetTableSection">
+                                <h3>4. Tabla de iteraciones resumida</h3>
+                                <table class="sheet-iter-table" id="sheetIterTable">
+                                    <thead>
+                                        <tr>
+                                            <th>i</th>
+                                            <th>a</th>
+                                            <th>b</th>
+                                            <th>xr</th>
+                                            <th>f(xr)</th>
+                                            <th>Ea (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </section>
+
+                            <section class="sheet-section">
+                                <h3>Conclusión técnica</h3>
+                                <p id="sheetConclusion" class="sheet-conclusion-text">—</p>
+                            </section>
+
+                            <footer class="sheet-footer">
+                                <div class="sheet-generated-by" id="sheetGeneratedAt">
+                                    Reporte del método de bisección, generado el —
+                                </div>
+                            </footer>
+                        </article>
+                    </div>
+                </div>
+
+                <!-- DIFUSIÓN Y EXPORTACIÓN -->
+                <aside class="card report-config-panel">
+                    <div class="panel-eyebrow">EXPORTAR Y DIFUNDIR</div>
+
+                    <!-- COMPARTIR ESCENARIO (QR) -->
+                    <div class="qr-card">
+                        <h4>Compartir escenario (QR)</h4>
+                        <p class="qr-subtitle">Escanea para abrir esta misma ecuación y parámetros en otro dispositivo.</p>
+
+                        <div class="qr-full-wrap">
+                            <div class="qr-box qr-box-report-full" id="reportQrBox" aria-label="Código QR del escenario"></div>
+                        </div>
+
+                        <div class="qr-actions qr-actions-single">
+                            <button type="button" class="btn-outline-sm" id="btnCopyLinkReport">
+                                <span class="material-icons-round mi-sm" aria-hidden="true">content_copy</span>
+                                <span>Copiar Enlace</span>
+                            </button>
+                        </div>
+                        <small class="qr-protocol-note hidden" id="qrProtocolNote">
+                            Nota: Estás abriendo el archivo localmente (<code>file://</code>). Al subirlo a un servidor web, el QR abrirá directamente desde cualquier teléfono.
+                        </small>
+                    </div>
+
+                    <hr class="panel-divider">
+
+                    <button type="button" class="btn-primary" id="btnPrintPdfSide">
+                        <span class="material-icons-round mi-sm" aria-hidden="true">print</span>
+                        <span>Exportar PDF</span>
+                    </button>
+                </aside>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ==========================================
+     DRAWER LATERAL: PASO A PASO DIDÁCTICO
+     ========================================== -->
+<div class="drawer-backdrop hidden" id="drawerBackdrop"></div>
+<aside class="step-drawer" id="stepDrawer" aria-hidden="true" aria-label="Desarrollo paso a paso">
+    <div class="drawer-header">
+        <div>
+            <span class="panel-eyebrow">PASO A PASO DIDÁCTICO</span>
+            <h3 id="drawerTitle">Iteración 1</h3>
+        </div>
+        <button type="button" class="btn-close-drawer" id="btnCloseDrawer" aria-label="Cerrar panel">
+            <span class="material-icons-round mi-sm" aria-hidden="true">close</span>
+        </button>
+    </div>
+
+    <div class="drawer-nav-bar">
+        <button type="button" class="btn-outline-sm" id="btnDrawerPrev">
+            <span class="material-icons-round mi-sm" aria-hidden="true">chevron_left</span>
+            <span>Anterior</span>
+        </button>
+        <span id="drawerIterBadge" class="drawer-iter-badge">i = 1</span>
+        <button type="button" class="btn-outline-sm" id="btnDrawerNext">
+            <span>Siguiente</span>
+            <span class="material-icons-round mi-sm" aria-hidden="true">chevron_right</span>
+        </button>
+    </div>
+
+    <div class="drawer-body" id="drawerBody">
+        <p class="drawer-empty">Calcula una función y selecciona una fila de la tabla para inspeccionar su desarrollo algebraico completo.</p>
+    </div>
+</aside>
+
+<!-- ==========================================
+     MODAL RÁPIDO: COMPARTIR / CÓDIGO QR
+     ========================================== -->
+<div class="modal-backdrop hidden" id="qrModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 id="qrModalTitle">Compartir escenario activo</h3>
+            <button type="button" class="btn-close-drawer" id="btnCloseQrModal" aria-label="Cerrar">
+                <span class="material-icons-round mi-sm" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <p class="modal-desc">
+            Escanea este código QR o copia el enlace para replicar exactamente la función, parámetros e intervalo actual.
+        </p>
+        <div class="modal-qr-center">
+            <div class="qr-box qr-box-lg" id="modalQrBox"></div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-primary" id="btnCopyLinkModal">
+                <span class="material-icons-round mi-sm" aria-hidden="true">content_copy</span>
+                <span>Copiar Enlace</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btnModalGoReport">
+                <span class="material-icons-round mi-sm" aria-hidden="true">picture_as_pdf</span>
+                <span>Exportar reporte</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts modulares de la aplicación -->
+<script src="src/js/math-parser.js"></script>
+<script src="src/js/bisection.js"></script>
+<script src="src/js/chart-player.js"></script>
+<script src="src/js/export-share.js"></script>
+<script src="src/js/report.js"></script>
+<script src="src/js/app.js"></script>
+
+</body>
+</html>
